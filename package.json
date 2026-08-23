@@ -1,0 +1,20 @@
+{
+  "name": "stem-studio",
+  "version": "1.0.0",
+  "description": "AI music stem separator — upload a song, get vocals / drums / bass / other as downloadable MP3s. Powered by Demucs.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "setup:ffmpeg": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-ffmpeg.ps1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.0.1"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.8.0"
+  }
+}

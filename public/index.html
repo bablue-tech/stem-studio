@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#08070e" />
+  <title>STEM·STUDIO · AI Music Separator</title>
+  <meta name="description" content="Upload a song and download isolated vocals, drums, bass and other instruments as MP3s." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='12' width='3' height='8' rx='1.5' fill='%238b5cf6'/%3E%3Crect x='10' y='7' width='3' height='18' rx='1.5' fill='%23c084fc'/%3E%3Crect x='16' y='10' width='3' height='12' rx='1.5' fill='%2322d3ee'/%3E%3Crect x='22' y='5' width='3' height='22' rx='1.5' fill='%238b5cf6'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Sora:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <div class="grain" aria-hidden="true"></div>
+  <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <header class="site-header" id="siteHeader">
+    <nav class="nav container">
+      <a href="/" class="brand">
+        <svg viewBox="0 0 32 32" width="24" height="24" class="brand-mark" aria-hidden="true">
+          <g fill="currentColor">
+            <rect x="4" y="12" width="3" height="8" rx="1.5"/>
+            <rect x="10" y="7" width="3" height="18" rx="1.5"/>
+            <rect x="16" y="10" width="3" height="12" rx="1.5"/>
+            <rect x="22" y="5" width="3" height="22" rx="1.5"/>
+          </g>
+        </svg>
+        <span>STEM<em>studio</em></span>
+      </a>
+      <div class="status-pill offline" id="apiStatus"><span class="dot"></span><span id="apiStatusText">Connecting</span></div>
+    </nav>
+  </header>
+
+  <main class="container">
+
+    <section class="hero reveal-load d1">
+      <p class="eyebrow">AI Music Stem Separation</p>
+      <h1 class="hero-title">One song in.<br /><em class="serif"><span class="text-gradient">Four layers out.</span></em></h1>
+      <p class="hero-sub">Drop any track and pull out clean <strong>vocals</strong>, <strong>drums</strong>, <strong>bass</strong> and <strong>everything else</strong> as separate MP3s, rendered on the server and delivered to your browser.</p>
+    </section>
+
+    <section class="studio-card reveal-load d2" aria-label="Upload and separate">
+      <form id="uploadForm" novalidate>
+        <div id="dropzone" role="button" tabindex="0" aria-label="Choose an audio file">
+          <svg class="dz-icon" viewBox="0 0 48 48" width="46" height="46" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 24h4M14 14v20M22 8v32M30 18v12M38 12v24M44 24h-2" opacity=".9"/>
+          </svg>
+          <p class="dz-title">Drop your track here</p>
+          <p class="dz-sub">MP3 · WAV · M4A · FLAC · OGG · up to 100&nbsp;MB</p>
+          <button type="button" class="btn-browse" id="browseBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Choose a song
+          </button>
+          <input type="file" id="fileInput" accept=".mp3,.wav,.m4a,.flac,.ogg,.opus,.aac,.wma,audio/*" hidden />
+        </div>
+
+        <div class="file-chip" id="fileChip" hidden>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span class="chip-meta"><strong id="chipName"></strong><span id="chipSize"></span></span>
+          <audio controls class="chip-audio" id="chipPreview"></audio>
+          <button type="button" id="chipClear" aria-label="Remove file">&times;</button>
+        </div>
+
+        <div class="model-field">
+          <label for="modelSelect">Model</label>
+          <div class="select-wrap">
+            <select id="modelSelect" name="model">
+              <option value="htdemucs" selected>Standard · fast</option>
+              <option value="htdemucs_ft">Fine-tuned · best quality</option>
+            </select>
+          </div>
+          <p class="model-hint" id="modelHint">Quick results, great for previews.</p>
+        </div>
+
+        <button type="submit" class="btn btn-solid btn-block" id="separateBtn" disabled>
+          <span class="btn-label">Separate stems</span>
+          <span class="btn-loader" hidden><span class="spinner light"></span></span>
+        </button>
+        <p class="form-note" id="uploadNote" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="pipeline" id="pipelinePanel" hidden>
+      <ol class="stages" id="stagesList">
+        <li data-stage="upload" class="done">Upload</li>
+        <li data-stage="queue">In queue</li>
+        <li data-stage="separate">Separating <b id="sepPct">0%</b></li>
+        <li data-stage="done">Done</li>
+      </ol>
+      <div class="eq-row">
+        <div class="eq" id="eqBars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <span class="prog-text" id="progText">0%</span>
+      </div>
+      <p class="pipeline-meta" id="pipelineMeta"></p>
+      <div class="error-box" id="errorBox" hidden>
+        <strong>Separation failed</strong>
+        <p id="errorMsg"></p>
+      </div>
+    </section>
+
+    <section class="results" id="resultsPanel" hidden>
+      <h2>Your <em class="serif text-gradient">stems.</em></h2>
+      <p class="results-meta" id="resultsMeta"></p>
+      <div class="stems-grid" id="stemsGrid"></div>
+
+      <div class="mixer" id="mixerPanel" hidden>
+        <div class="mixer-head">
+          <h3>Stem <em class="serif text-gradient">Mixer.</em></h3>
+          <div class="master-strip" id="masterStrip">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <div class="master-meta">
+              <strong id="masterName"></strong>
+              <span>All layers at 100% = this exact song · FX shape the Stem Mix</span>
+            </div>
+            <div class="source-switch" id="sourceSwitch" hidden>
+              <button type="button" class="src-btn active" data-src="stems">Stem Mix</button>
+              <button type="button" class="src-btn" data-src="original">Original</button>
+            </div>
+          </div>
+          <p class="mixer-hint">Four layers, perfectly in sync: reduce a layer to hear the rest.</p>
+        </div>
+        <p class="mixer-error" id="mixerError" hidden></p>
+        <div class="mixer-launch" id="mixerLaunchWrap">
+          <button type="button" class="btn-browse" id="mixerLaunchBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+            Launch stem mixer
+          </button>
+          <span class="mixer-note">fetches &amp; decodes all four stems · ~2–5 s</span>
+        </div>
+        <div class="mixer-loading" id="mixerLoading" hidden>
+          <span class="spinner"></span>
+          <span id="mixerLoadingText">Preparing mixer…</span>
+        </div>
+        <div class="mixer-console" id="mixerConsole" hidden>
+          <div class="transport">
+            <button type="button" class="mx-play" id="mxPlay" aria-label="Play / pause">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+            </button>
+            <span class="mx-time" id="mxCur">0:00</span>
+            <input type="range" class="mx-seek fader" id="mxSeek" min="0" max="1000" value="0" aria-label="Seek position" />
+            <span class="mx-time dim" id="mxTot">0:00</span>
+            <div class="mx-master" title="Master volume">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+              <input type="range" class="fader mx-vol" id="mxMaster" min="0" max="100" value="85" aria-label="Master volume" />
+            </div>
+          </div>
+          <div class="presets" id="mxPresets" hidden></div>
+          <div class="channels" id="mxBus"></div>
+          <div class="fx-rack" id="fxRack"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="history reveal-load d3">
+      <h2>Recent <em class="serif text-gradient">separations.</em></h2>
+      <div class="history-list" id="historyList"></div>
+    </section>
+
+  </main>
+
+  <footer class="container site-footer">
+    <p class="footer-note">Files auto-delete after 24 hours.</p>
+    <div class="footer-credits">
+      <span>© 2026 Sai Charan Sandeveni · All rights reserved</span>
+      <span class="credit-sep">·</span>
+      <span>Developed by <a href="https://www.linkedin.com/in/saicharan-sandeveni/" target="_blank" rel="noopener noreferrer">Sai Charan Sandeveni</a></span>
+    </div>
+  </footer>
+
+  <script src="/js/main.js" defer></script>
+</body>
+</html>
